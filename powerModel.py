@@ -55,7 +55,3 @@ def getTorque(robot, jointName, physics):
     joint = robot.GetJoint(jointName)
     [force, torque] = physics.GetJointForceTorque(joint)
     return dot(torque, joint.GetAxis())/ratio[jointName]
-
-
-## Note: when the power model is complete, there will no longer be a need to record joint data, so the
-## indexLookup variable and the recFile and state parameters will no longer be needed

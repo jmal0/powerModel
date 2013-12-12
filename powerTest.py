@@ -37,7 +37,61 @@ class StatusLogger:
 def log(string,level=4):
     raveLog(string,level)
 
-#def runTrajectory()
+def loadTrajectory(fileName):
+    print("\nLoadingTrajectory")
+
+    lines = f.readlines()
+    trajJointNames = lines[0].split()
+    jointNames = []
+    positions = dict()
+
+    # Check if all joints are valid
+    for jointName in trajJointNames:
+        if not(jointName in mutable):
+            if not(jointName in altname):
+                print 'Warning: Joint %s not recognized' % jointName
+            else:
+                jointName = altname[jointName]
+        jointNames.append(jointName)
+        positions[jointName] = []
+
+    # Load joint positions into arrays
+    del(lines[0])
+    i = 0
+    for line in lines:
+        vals = line.split()
+        j = 0
+        for jointName in jointNames:
+            positions[jointName].append(float(vals[j]))
+            j += 1
+        i += 1
+
+    print("Trajectory file loaded") 
+
+    return positions, jointNames, len(lines)
+
+def runTrajectory(positions, jointNames, iterations):
+    print("\nStarting trajectory")
+    
+    usage = 0.0
+    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
+    statusLogger.zero()
+    for i in xrange(iterations):
+        posei = Pose(robot, ctrl)
+        pose = posei
+        for j in xrange(1, N+1):
+            for jointName in jointNames:
+                if(jointName in mutable and mutable[jointName]):
+                    pose[jointName] = float(j)/N*(positions[jointName][i]-posei[jointName]) + posei[jointName]
+            pose.send()
+            env.StepSimulation(TIMESTEP)
+            addTorques(robot)
+
+        statusLogger.tick()
+        usage += calcBatteryUsage(robot, TIMESTEP*N)
+
+    print("\nTrajectory completed\nPower used: %.6fWh" % usage)
+    
 
 if __name__ == '__main__':
     # Setup simulation options
@@ -56,7 +110,6 @@ if __name__ == '__main__':
 
     # Main loop
     TIMESTEP = .001
-    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
     statusLogger = StatusLogger(100, time.time())
     while(True):
         #Open trajectory file input by user. If input is null, the script will exit
@@ -72,53 +125,8 @@ if __name__ == '__main__':
                 # File not found, ask user to re-enter file name
                 print("File does not exist")
         
-        # Loading trajectory
-        print("Loading Trajectory")
-        
-        lines = f.readlines()
-        trajJointNames = lines[0].split()
-        jointNames = []
-        positions = dict()
-
-        # Check if all joints are valid
-        for jointName in trajJointNames:
-            if not(jointName in mutable):
-                if not(jointName in altname):
-                    print 'Warning: Joint %s not recognized' % jointName
-                else:
-                    jointName = altname[jointName]
-            jointNames.append(jointName)
-            positions[jointName] = []
-
-        # Load joint positions into arrays
-        del(lines[0])
-        i = 0
-        for line in lines:
-            vals = line.split()
-            j = 0
-            for jointName in jointNames:
-                positions[jointName].append(float(vals[j]))
-                j += 1
-            i += 1 
-
-        print("Trajectory file loaded")
+        # Load trajectory
+        [positions, jointNames, iterations] = loadTrajectory(fileName)
 
         # Run trajectory
-        usage = 0.0
-        statusLogger.zero()
-        for i in xrange(len(lines)):
-            posei = Pose(robot, ctrl)
-            pose = posei
-            for j in xrange(1, N+1):
-                for jointName in jointNames:
-                    if(jointName in mutable and mutable[jointName]):
-                        pose[jointName] = float(j)/N*(positions[jointName][i]-posei[jointName]) + posei[jointName]
-                pose.send()
-                env.StepSimulation(TIMESTEP)
-                addTorques(robot)
-
-            statusLogger.tick()
-            usage += calcBatteryUsage(robot, TIMESTEP*N)
-
-        print("\nTrajectory completed\n")
-        print("Power used: %.6fWh" % usage)
+        runTrajectory(positions, jointNames, iterations)
