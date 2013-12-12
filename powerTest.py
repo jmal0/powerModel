@@ -5,6 +5,8 @@ import hubo_ach
 import sys
 import time
 import numpy
+import cmd
+import readline, glob
 
 from powerModel import * # Import for power computing and joint properties
 
@@ -91,17 +93,23 @@ def runTrajectory(positions, jointNames, iterations):
         usage += calcBatteryUsage(robot, TIMESTEP*N)
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
-    
+
+# Tab completion for trajectory file paths    
+def complete(text, state):
+    return (glob.glob(text+'*')+[None])[state]
 
 if __name__ == '__main__':
+    readline.set_completer_delims(' \t\n;')
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer(complete)
+
     # Setup simulation options
     [env, options] = setup('qtcoin', True)
     env.SetDebugLevel(4)
     time.sleep(.25)
     options.physics = True
     options.stop = True
-    options.ghost = True
-
+    
     # Start OpenHubo
     [robot, ctrl, ind, ghost, recorder] = load_scene(env, options.robotfile, options.scenefile, options.stop, options.physics, options.ghost)
     env.StopSimulation()
@@ -113,17 +121,21 @@ if __name__ == '__main__':
     statusLogger = StatusLogger(100, time.time())
     while(True):
         #Open trajectory file input by user. If input is null, the script will exit
+        print("Enter trajectory file to run or press Ctrl+C to exit")
         while(True):
             try:
-                print("Enter trajectory file to run or press Ctrl+C to exit")
                 fileName = raw_input("> ")
-                if(fileName == ""):
-                    sys.exit()
+                if(not(fileName[len(fileName) - 5:] == ".traj")):
+                    print("Not a trajectory file")
+                    continue
                 f = open(fileName, 'r')
                 break
             except IOError:
                 # File not found, ask user to re-enter file name
                 print("File does not exist")
+            except KeyboardInterrupt:
+                print("\nExiting")
+                sys.exit()
         
         # Load trajectory
         [positions, jointNames, iterations] = loadTrajectory(fileName)
