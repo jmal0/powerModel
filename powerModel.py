@@ -26,20 +26,20 @@ for line in lines:
 f.close()
 
 # Calculate battery usage
-def calcBatteryUsage(robot, step):
+def calcBatteryUsage(robot, step, q):
     usage = 0
-    for use in getPowerUsage(robot, step):
+    for use in getPowerUsage(robot, step, q):
         usage += use
     return usage + 48*.22*step/3600 # Add in battery drain by idle current draw
 
 # Converts motor torque to current and calculates battery drain by each motor
-def getPowerUsage(robot, step):
+def getPowerUsage(robot, step, q):
     power = []
     for jointName in const:
         t = totals[jointName]/float(num)
         i = abs(t)/const[jointName]
-        #if(jointName == "RAP"):
-        #    print t
+        if(jointName == "RSR"):
+            q.write(str(t) + " ")
         totals[jointName] = 0.0
         power.append(voltage[jointName]*i*step/3600.0)
     return power

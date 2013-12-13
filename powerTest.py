@@ -92,7 +92,8 @@ def runTrajectory(positions, jointNames, iterations):
             addTorques(robot)
 
         statusLogger.tick()
-        usage += calcBatteryUsage(robot, TIMESTEP*N)
+        usage += calcBatteryUsage(robot, TIMESTEP*N, q)
+        q.write(str(pose["RSR"]) + "\n")
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
 
@@ -102,7 +103,8 @@ def sleep(sleepTime):
     except:
         print("Argument of sleep not understood")
         return
-
+    
+    pose = Pose(robot, ctrl)##
     usage = 0.0
     N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP)) # Simulation runs faster than hubo-ach
     statusLogger.zero() # Restart timer
@@ -111,7 +113,8 @@ def sleep(sleepTime):
             env.StepSimulation(TIMESTEP)
             addTorques(robot)
         statusLogger.tick()
-        usage+= calcBatteryUsage(robot, TIMESTEP*N)
+        usage+= calcBatteryUsage(robot, TIMESTEP*N, q)
+        q.write(str(pose["RSR"]) + "\n")
 
     print("\nPower used: %.6fWh" % usage)
 
@@ -165,6 +168,10 @@ if __name__ == '__main__':
     env.StopSimulation()
     env.StepSimulation(.0005)
 
+
+    ##
+    q = open('armTorque.txt', 'w')
+    ##
 
     # Main loop
     TIMESTEP = .001
