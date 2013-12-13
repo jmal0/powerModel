@@ -39,7 +39,7 @@ class StatusLogger:
 def log(string,level=4):
     raveLog(string,level)
 
-def loadTrajectory(fileName):
+def loadTrajectory(f):
     print("\nLoadingTrajectory")
 
     lines = f.readlines()
@@ -76,11 +76,13 @@ def runTrajectory(positions, jointNames, iterations):
     print("\nStarting trajectory")
     
     usage = 0.0
-    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
-    statusLogger.zero()
+    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP)) # Simulation runs faster than hubo-ach
+    statusLogger.zero() # Restart timer
     for i in xrange(iterations):
         posei = Pose(robot, ctrl)
         pose = posei
+
+        # Approximate positions to send in between trajectory values
         for j in xrange(1, N+1):
             for jointName in jointNames:
                 if(jointName in mutable and mutable[jointName]):
@@ -93,6 +95,54 @@ def runTrajectory(positions, jointNames, iterations):
         usage += calcBatteryUsage(robot, TIMESTEP*N)
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
+
+def sleep(sleepTime):
+    try:
+        t = float(sleepTime)
+    except:
+        print("Argument of sleep not understood")
+        return
+
+    usage = 0.0
+    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP)) # Simulation runs faster than hubo-ach
+    statusLogger.zero() # Restart timer
+    for i in xrange(int(t/TIMESTEP/N)):
+        for j in xrange(N):
+            env.StepSimulation(TIMESTEP)
+            addTorques(robot)
+        statusLogger.tick()
+        usage+= calcBatteryUsage(robot, TIMESTEP*N)
+
+    print("\nPower used: %.6fWh" % usage)
+
+def getCommand():
+    print("Enter trajectory file to run or press Ctrl+C to exit")
+    
+    # Continuously ask for fileName or command
+    while(True):
+        try:
+            fileName = raw_input("> ")
+            
+            # Check to see if input is a trajectory file
+            if(not(fileName[len(fileName) - 5:] == ".traj")):
+                # Input is sleep command
+                if(fileName[0:6] == "sleep("):
+                    sleep(fileName[6:len(fileName) - 1])
+                    return ""
+
+                # Input is invalid file, ask again
+                print("Not a trajectory file")
+                continue
+            return open(fileName, 'r')
+        
+        # File not found, ask user to re-enter file name
+        except IOError:
+            print("File does not exist")
+
+        # Exit
+        except KeyboardInterrupt:
+            print("\nExiting")
+            sys.exit()
 
 # Tab completion for trajectory file paths    
 def complete(text, state):
@@ -121,24 +171,11 @@ if __name__ == '__main__':
     statusLogger = StatusLogger(100, time.time())
     while(True):
         #Open trajectory file input by user. If input is null, the script will exit
-        print("Enter trajectory file to run or press Ctrl+C to exit")
-        while(True):
-            try:
-                fileName = raw_input("> ")
-                if(not(fileName[len(fileName) - 5:] == ".traj")):
-                    print("Not a trajectory file")
-                    continue
-                f = open(fileName, 'r')
-                break
-            except IOError:
-                # File not found, ask user to re-enter file name
-                print("File does not exist")
-            except KeyboardInterrupt:
-                print("\nExiting")
-                sys.exit()
+        f = getCommand()
         
-        # Load trajectory
-        [positions, jointNames, iterations] = loadTrajectory(fileName)
+        if(f):
+            # Load trajectory
+            [positions, jointNames, iterations] = loadTrajectory(f)
 
-        # Run trajectory
-        runTrajectory(positions, jointNames, iterations)
+            # Run trajectory
+            runTrajectory(positions, jointNames, iterations)
