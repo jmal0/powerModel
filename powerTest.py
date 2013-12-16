@@ -168,7 +168,6 @@ if __name__ == '__main__':
     env.StopSimulation()
     env.StepSimulation(.0005)
 
-
     ##
     q = open('armTorque.txt', 'w')
     ##

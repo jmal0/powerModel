@@ -20,7 +20,7 @@ for line in lines:
     ratio[vals[0]] = float(vals[1])
     const[vals[0]] = float(vals[2])
     voltage[vals[0]] = float(vals[3])
-    mutable[vals[0]] = bool(vals[4])
+    mutable[vals[0]] = vals[4] == 'True'
     altname[vals[5]] = vals[0]
     totals[vals[0]] = 0.0
 f.close()
@@ -34,14 +34,16 @@ def calcBatteryUsage(robot, step, q):
 
 # Converts motor torque to current and calculates battery drain by each motor
 def getPowerUsage(robot, step, q):
-    power = []
+    power = [0]*len(const)
+    j = 0
     for jointName in const:
         t = totals[jointName]/float(num)
         i = abs(t)/const[jointName]
         if(jointName == "RSR"):
             q.write(str(t) + " ")
         totals[jointName] = 0.0
-        power.append(voltage[jointName]*i*step/3600.0)
+        power[j] = voltage[jointName]*i*step/3600.0
+        j += 1
     return power
 
 # Add each motor's torque output

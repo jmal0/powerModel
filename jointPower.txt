@@ -1,5 +1,5 @@
 Motor Name                                        Gear Ratio                        Motor Torque Constant                Motor Voltage                 Mutable               Alternate Name
-TSY                                               250                               .276                                 48                            False                 WST
+TSY                                               250                               .276                                 48                            True                  WST
 NK1                                               100                               100                                  12                            False                 NK1
 NK2                                               100                               100                                  12                            False                 NK2
 LSP                                               160                               .276                                 48                            True                  LSP
