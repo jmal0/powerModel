@@ -39,6 +39,13 @@ class StatusLogger:
 def log(string,level=4):
     raveLog(string,level)
 
+def paint(torque):
+    for jointName in torque:
+        link = robot.GetLink("Body_" + jointName)
+        if(not(link == None)):
+            for geom in link.GetGeometries():
+                geom.SetDiffuseColor([min(torque[jointName], .5)/.5,.5-min(torque[jointName], .5)/.1,0])
+
 def loadTrajectory(f):
     print("\nLoadingTrajectory")
 
@@ -92,7 +99,9 @@ def runTrajectory(positions, jointNames, iterations):
             addTorques(robot)
 
         statusLogger.tick()
-        usage += calcBatteryUsage(robot, TIMESTEP*N, q)
+        [use, torque] = calcBatteryUsage(robot, TIMESTEP*N, q)
+        #paint(torque)
+        usage+= use
         q.write(str(pose["RSR"]) + "\n")
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
@@ -113,7 +122,9 @@ def sleep(sleepTime):
             env.StepSimulation(TIMESTEP)
             addTorques(robot)
         statusLogger.tick()
-        usage+= calcBatteryUsage(robot, TIMESTEP*N, q)
+        [use, torque] = calcBatteryUsage(robot, TIMESTEP*N, q)
+        #paint(torque)
+        usage+= use
         q.write(str(pose["RSR"]) + "\n")
 
     print("\nPower used: %.6fWh" % usage)
