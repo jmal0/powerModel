@@ -10,6 +10,7 @@ voltage = dict() # Contains joint names and the voltage they run off of
 mutable = dict() # Contains joint names and a boolean variable indicatin if that joint's position can be set
 altname = dict() # Contains trajectory joint names and the corresponding name that openhubo recognizes
 totals = dict() # Adds each motor's torque readings; Average is taken and written to file
+resistance = dict()
 num = 5 # Number of timesteps before writing to file
 
 f = open('jointPower.txt','r')
@@ -22,6 +23,7 @@ for line in lines:
     voltage[vals[0]] = float(vals[3])
     mutable[vals[0]] = vals[4] == 'True'
     altname[vals[5]] = vals[0]
+    resistance[vals[0]] = float(vals[6])
     totals[vals[0]] = 0.0
 f.close()
 
@@ -31,7 +33,7 @@ def calcBatteryUsage(robot, step, q):
     [power, torque] =  getPowerUsage(robot, step, q)
     for use in power:
         usage += use # old was 2892
-    return usage + .000074317, torque # Add in battery drain by idle current draw
+    return usage + .0148634*step, torque # Add in battery drain by idle current draw
 
 # Converts motor torque to current and calculates battery drain by each motor
 def getPowerUsage(robot, step, q):
@@ -42,10 +44,13 @@ def getPowerUsage(robot, step, q):
         t = totals[jointName]/float(num)
         torque[jointName] = abs(t)
         i = abs(t)/const[jointName]
-        if(jointName == "RSR"):
+        V = abs(robot.GetJoint(jointName).GetVelocities()[0])*ratio[jointName]*const[jointName]+resistance[jointName]*i
+        if(jointName == "RSP"):
             q.write(str(t) + " ")
         totals[jointName] = 0.0
-        power[j] = voltage[jointName]*i*step/3600.0
+        power[j] = V*i*step/3600.0
+        if(voltage[jointName] == 12):
+            power[j] = 0
         j += 1
     return power, torque
 
