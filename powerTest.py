@@ -7,6 +7,7 @@ import time
 import numpy
 import cmd
 import readline, glob
+COMMANDS = ['runTrajectory', 'getPosition', 'setPosition', 'stepSimulation']
 
 from powerModel import * # Import for power computing and joint properties
 
@@ -46,7 +47,18 @@ def paint(torque):
             for geom in link.GetGeometries():
                 geom.SetDiffuseColor([min(torque[jointName], .5)/.5,.5-min(torque[jointName], .5)/.1,0])
 
-def loadTrajectory(f):
+def runTrajectory(fileName):
+    # Check to see if file exists and is a trajectory file
+    try:
+        f = open(fileName, 'r')
+    except IOError:
+        print "File does not exist"
+        return
+
+    if(not(fileName[len(fileName) - 5:] == ".traj")):
+        print("Not a valid trajectory file")
+        return
+
     print("\nLoadingTrajectory")
 
     lines = f.readlines()
@@ -76,16 +88,12 @@ def loadTrajectory(f):
         i += 1
 
     print("Trajectory file loaded") 
-
-    return positions, jointNames, len(lines)
-
-def runTrajectory(positions, jointNames, iterations):
-    print("\nStarting trajectory")
     
+    print("\nStarting trajectory")
     usage = 0.0
     N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP)) # Simulation runs faster than hubo-ach
     statusLogger.zero() # Restart timer
-    for i in xrange(iterations):
+    for i in xrange(len(lines)):
         posei = Pose(robot, ctrl)
         pose = posei
 
@@ -106,7 +114,7 @@ def runTrajectory(positions, jointNames, iterations):
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
 
-def sleep(sleepTime):
+def stepSimulation(sleepTime):
     try:
         t = float(sleepTime)
     except:
@@ -134,44 +142,17 @@ def getPosition(jointName):
         pose = Pose(robot, ctrl)
         print(jointName + ": " + "%.4f" % pose[jointName])
 
-def setPosition():
+def setPosition(jointName, position):
     return 0
-
-def getCommand():
-    print("Enter trajectory file to run or press Ctrl+C to exit")
-    
-    # Continuously ask for fileName or command
-    while(True):
-        try:
-            userInput = raw_input("> ")
-            
-            # Check to see if input is a trajectory file
-            if(not(userInput[len(userInput) - 5:] == ".traj")):
-                words = userInput.split()
-                # Input is sleep command
-                if(words[0] == "stepSimulation"):
-                    sleep(words[1])
-                    return ""
-                if(words[0] == "getPosition"):
-                    getPosition(words[1])
-                    return ""
-
-                # Input is invalid file, ask again
-                print("Not a trajectory file")
-                continue
-            return open(userInput, 'r')
-        
-        # File not found, ask user to re-enter file name
-        except IOError:
-            print("File does not exist")
-
-        # Exit
-        except KeyboardInterrupt:
-            print("\nExiting")
-            sys.exit()
 
 # Tab completion for trajectory file paths    
 def complete(text, state):
+    for cmd in COMMANDS:
+        if cmd.startswith(text):
+            if not state:
+                return cmd
+            else:
+                state -=1
     return (glob.glob(text+'*')+[None])[state]
 
 if __name__ == '__main__':
@@ -202,12 +183,50 @@ if __name__ == '__main__':
     TIMESTEP = .001
     statusLogger = StatusLogger(100, time.time())
     while(True):
-        #Open trajectory file input by user. If input is null, the script will exit
-        f = getCommand()
+        print("Enter command or press Ctrl+C to exit")
         
-        if(f):
-            # Load trajectory
-            [positions, jointNames, iterations] = loadTrajectory(f)
+        # Continuously ask for command
+        while(True):
+            try:
+                userInput = raw_input("> ")
+                words = userInput.split()
 
-            # Run trajectory
-            runTrajectory(positions, jointNames, iterations)
+                if(len(words) == 0):
+                    continue
+                    
+                if(words[0] == "runTrajectory"):
+                    if(len(words) == 2):
+                        runTrajectory(words[1])
+                        break
+                    else:
+                        print "Runs given trajectory file and calculates power use\nUsage: runTrajectory FILEPATH"
+                        continue
+
+                if(words[0] == "stepSimulation"):
+                    if(len(words) == 2):
+                        stepSimulation(words[1])
+                        break
+                    else:
+                        print "Runs the simulation without moving the robot and calculates power use\nUsage: stepSimulation TIME"
+                        continue
+            
+                if(words[0] == "getPosition"):
+                    if(len(words) == 2):
+                        getPosition(words[1])
+                        break
+                    else:
+                        print "Returns the position of a joint\nUsage: getPosition JOINTNAME"
+                        continue
+
+                if(words[0] == "setPosition"):
+                    if(len(words) == 2):
+                        setPosition(words[1], words[2])
+                        break
+                    else:
+                        print "Moves joint to specified position\nUsage: setPosition JOINTNAME VALUE"
+
+            # Exit
+            except KeyboardInterrupt:
+                print("\nExiting")
+                sys.exit()
+
