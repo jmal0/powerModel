@@ -129,25 +129,37 @@ def sleep(sleepTime):
 
     print("\nPower used: %.6fWh" % usage)
 
+def getPosition(jointName):
+    if jointName in mutable:
+        pose = Pose(robot, ctrl)
+        print(jointName + ": " + "%.4f" % pose[jointName])
+
+def setPosition():
+    return 0
+
 def getCommand():
     print("Enter trajectory file to run or press Ctrl+C to exit")
     
     # Continuously ask for fileName or command
     while(True):
         try:
-            fileName = raw_input("> ")
+            userInput = raw_input("> ")
             
             # Check to see if input is a trajectory file
-            if(not(fileName[len(fileName) - 5:] == ".traj")):
+            if(not(userInput[len(userInput) - 5:] == ".traj")):
+                words = userInput.split()
                 # Input is sleep command
-                if(fileName[0:6] == "sleep("):
-                    sleep(fileName[6:len(fileName) - 1])
+                if(words[0] == "stepSimulation"):
+                    sleep(words[1])
+                    return ""
+                if(words[0] == "getPosition"):
+                    getPosition(words[1])
                     return ""
 
                 # Input is invalid file, ask again
                 print("Not a trajectory file")
                 continue
-            return open(fileName, 'r')
+            return open(userInput, 'r')
         
         # File not found, ask user to re-enter file name
         except IOError:
@@ -179,8 +191,11 @@ if __name__ == '__main__':
     env.StopSimulation()
     env.StepSimulation(.0005)
 
+    print "\nMaestro OpenHubo script for modelling power usage of trajectories"
+    print "\tCommands: runTrajectory setPosition getPosition stepSimulation\n"
+
     ##
-    q = open('armTorque.txt', 'w')
+    q = open('trajectories/armTorque.txt', 'w')
     ##
 
     # Main loop
