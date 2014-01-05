@@ -40,13 +40,6 @@ class StatusLogger:
 def log(string,level=4):
     raveLog(string,level)
 
-def paint(torque):
-    for jointName in torque:
-        link = robot.GetLink("Body_" + jointName)
-        if(not(link == None)):
-            for geom in link.GetGeometries():
-                geom.SetDiffuseColor([min(torque[jointName], .5)/.5,.5-min(torque[jointName], .5)/.1,0])
-
 def runTrajectory(fileName):
     # Check to see if file exists and is a trajectory file
     try:
@@ -68,11 +61,8 @@ def runTrajectory(fileName):
 
     # Check if all joints are valid
     for jointName in trajJointNames:
-        if not(jointName in mutable):
-            if not(jointName in altname):
-                print 'Warning: Joint %s not recognized' % jointName
-            else:
-                jointName = altname[jointName]
+        if not(jointName in power.names):
+            print 'Warning: Joint %s not recognized or cannot be set' % jointName
         jointNames.append(jointName)
         positions[jointName] = []
 
@@ -100,16 +90,14 @@ def runTrajectory(fileName):
         # Approximate positions to send in between trajectory values
         for j in xrange(1, N+1):
             for jointName in jointNames:
-                if(jointName in mutable and mutable[jointName]):
+                if(jointName in power.names):
                     pose[jointName] = float(j)/N*(positions[jointName][i]-posei[jointName]) + posei[jointName]
             pose.send()
             env.StepSimulation(TIMESTEP)
-            addTorques(robot)
+            power.addTorques()
 
         statusLogger.tick()
-        [use, torque] = calcBatteryUsage(robot, TIMESTEP*N, q)
-        #paint(torque)
-        usage+= use
+        usage += power.calcBatteryUsage(TIMESTEP*N, q)
         q.write(str(pose["RSR"]) + "\n")
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
@@ -123,29 +111,73 @@ def stepSimulation(sleepTime):
     
     pose = Pose(robot, ctrl)##
     usage = 0.0
-    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP)) # Simulation runs faster than hubo-ach
+    N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
     statusLogger.zero() # Restart timer
     for i in xrange(int(t/TIMESTEP/N)):
         for j in xrange(N):
             env.StepSimulation(TIMESTEP)
-            addTorques(robot)
+            power.addTorques()
         statusLogger.tick()
-        [use, torque] = calcBatteryUsage(robot, TIMESTEP*N, q)
-        #paint(torque)
-        usage+= use
+        usage += power.calcBatteryUsage(TIMESTEP*N, q)
         q.write(str(pose["RSR"]) + "\n")
 
     print("\nPower used: %.6fWh" % usage)
 
 def getPosition(jointName):
-    if jointName in mutable:
+    # Check to see if jointName is valid
+    if jointName in power.names:
         pose = Pose(robot, ctrl)
         print(jointName + ": " + "%.4f" % pose[jointName])
+    else:
+        print "Invalid joint name"
 
 def setPosition(jointName, position):
-    return 0
+    # Check to see if jointName is valid
+    if(jointName in power.names):
+        try:
+            # Check to see if position is a decimal number
+            position = float(position)
+        except:
+            print "Argument of setPosition not understood"
+            return
 
-# Tab completion for trajectory file paths    
+        pose = Pose(robot, ctrl)
+        jointPos = pose[jointName]
+        step = .3*TIMESTEP # Position step determined by interpolation velocity and simulation timestep
+        usage = 0
+        count = 0
+        N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
+        statusLogger.zero() # Restart timer
+
+        if(jointPos > position):
+            step *= -1
+        jointPos += step
+        # While joint is not near desired position yet
+        while(abs(jointPos - position) >= abs(step)):
+            pose[jointName] = jointPos
+            pose.send()
+            env.StepSimulation(TIMESTEP)
+            power.addTorques()
+
+            if(count < N):
+                count += 1
+            else:
+                usage += power.calcBatteryUsage(TIMESTEP*N, q)
+                count = 0
+                statusLogger.tick()
+        
+            jointPos += step
+
+        # Joint is near desired position, set position to desired position
+        pose[jointName] = position
+        env.StepSimulation(TIMESTEP)
+
+        print("Power used: %.6fWh" % usage)
+
+    else:
+        print "Invalid joint name"
+
+# Tab completion for trajectory file paths and commands   
 def complete(text, state):
     for cmd in COMMANDS:
         if cmd.startswith(text):
@@ -156,6 +188,7 @@ def complete(text, state):
     return (glob.glob(text+'*')+[None])[state]
 
 if __name__ == '__main__':
+    # Initialize tab completion
     readline.set_completer_delims(' \t\n;')
     readline.parse_and_bind("tab: complete")
     readline.set_completer(complete)
@@ -171,6 +204,11 @@ if __name__ == '__main__':
     [robot, ctrl, ind, ghost, recorder] = load_scene(env, options.robotfile, options.scenefile, options.stop, options.physics, options.ghost)
     env.StopSimulation()
     env.StepSimulation(.0005)
+    TIMESTEP = .001
+    statusLogger = StatusLogger(100, time.time())
+    
+    # Initialize power model, motors
+    power = PowerModel(robot, 5)
 
     print "\nMaestro OpenHubo script for modelling power usage of trajectories"
     print "\tCommands: runTrajectory setPosition getPosition stepSimulation\n"
@@ -179,54 +217,47 @@ if __name__ == '__main__':
     q = open('trajectories/armTorque.txt', 'w')
     ##
 
-    # Main loop
-    TIMESTEP = .001
-    statusLogger = StatusLogger(100, time.time())
+    # Continuously ask for command
+    print "Enter command or press Ctrl+C to exit"
     while(True):
-        print("Enter command or press Ctrl+C to exit")
-        
-        # Continuously ask for command
-        while(True):
-            try:
-                userInput = raw_input("> ")
-                words = userInput.split()
+        try:
+            userInput = raw_input("> ")
+            words = userInput.split()
 
-                if(len(words) == 0):
-                    continue
+            if(len(words) == 0):
+                continue
                     
-                if(words[0] == "runTrajectory"):
-                    if(len(words) == 2):
-                        runTrajectory(words[1])
-                        break
-                    else:
-                        print "Runs given trajectory file and calculates power use\nUsage: runTrajectory FILEPATH"
-                        continue
+            if(words[0] == "runTrajectory"):
+                if(len(words) == 2):
+                    runTrajectory(words[1])
+                    continue
+                else:
+                    print "Runs given trajectory file and calculates power use\nUsage: runTrajectory FILEPATH"
+                    continue
 
-                if(words[0] == "stepSimulation"):
-                    if(len(words) == 2):
-                        stepSimulation(words[1])
-                        break
-                    else:
-                        print "Runs the simulation without moving the robot and calculates power use\nUsage: stepSimulation TIME"
-                        continue
+            if(words[0] == "stepSimulation"):
+                if(len(words) == 2):
+                    stepSimulation(words[1])
+                    continue
+                else:
+                    print "Runs the simulation without moving the robot and calculates power use\nUsage: stepSimulation TIME"
+                    continue
             
-                if(words[0] == "getPosition"):
-                    if(len(words) == 2):
-                        getPosition(words[1])
-                        break
-                    else:
-                        print "Returns the position of a joint\nUsage: getPosition JOINTNAME"
-                        continue
+            if(words[0] == "getPosition"):
+                if(len(words) == 2):
+                    getPosition(words[1])
+                    continue
+                else:
+                    print "Returns the position of a joint\nUsage: getPosition JOINTNAME"
+                    continue
 
-                if(words[0] == "setPosition"):
-                    if(len(words) == 2):
-                        setPosition(words[1], words[2])
-                        break
-                    else:
-                        print "Moves joint to specified position\nUsage: setPosition JOINTNAME VALUE"
+            if(words[0] == "setPosition"):
+                if(len(words) == 3):
+                    setPosition(words[1], words[2])
+                else:
+                    print "Moves joint to specified position\nUsage: setPosition JOINTNAME VALUE"
 
-            # Exit
-            except KeyboardInterrupt:
-                print("\nExiting")
-                sys.exit()
-
+        # Exit
+        except KeyboardInterrupt:
+            print("\nExiting")
+            sys.exit()
