@@ -30,19 +30,17 @@ f.close()
 # Calculate battery usage
 def calcBatteryUsage(robot, step, q):
     usage = 0
-    [power, torque] =  getPowerUsage(robot, step, q)
+    power =  getPowerUsage(robot, step, q)
     for use in power:
         usage += use # old was 2892
-    return usage + .0148634*step, torque # Add in battery drain by idle current draw
+    return usage + .0148634*step # Add in battery drain by idle current draw
 
 # Converts motor torque to current and calculates battery drain by each motor
 def getPowerUsage(robot, step, q):
     power = [0]*len(const)
-    torque = dict()
     j = 0
     for jointName in const:
         t = totals[jointName]/float(num)
-        torque[jointName] = abs(t)
         i = abs(t)/const[jointName]
         V = abs(robot.GetJoint(jointName).GetVelocities()[0])*ratio[jointName]*const[jointName]+resistance[jointName]*i
         if(jointName == "RSP"):
@@ -52,7 +50,7 @@ def getPowerUsage(robot, step, q):
         if(voltage[jointName] == 12):
             power[j] = 0
         j += 1
-    return power, torque
+    return power
 
 # Add each motor's torque output
 def addTorques(robot):
