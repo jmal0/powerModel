@@ -22,18 +22,8 @@ class PowerModel:
                 self.totals[motor] = 0.0
         f.close()
 
-    # Calculate battery usage
-    def calcBatteryUsage(self, step, q):
+    def calcPowerUsage(self, step, q):
         usage = 0
-        power =  self.getPowerUsage(step, q)
-        for use in power:
-            usage += use
-        return usage + .0148634*step # Add in battery drain by idle current draw
-
-    # Converts motor torque to current and calculates battery drain by each motor
-    def getPowerUsage(self, step, q):
-        power = [0]*len(self.motors)
-        j = 0
         for motor in self.motors:
             torque = abs(self.totals[motor]/self.num)
             current = motor.getCurrent(torque)
@@ -41,9 +31,8 @@ class PowerModel:
             if(motor.getName() == "RSR"):
                 q.write(str(torque) + " ")
             self.totals[motor] = 0.0
-            power[j] = voltage*current*step/3600.0
-            j += 1
-        return power
+            usage += voltage*current*step/3600.0
+        return usage + .0148634*step # Add in battery drain by idle current draw
 
     # Add each motor's torque output
     def addTorques(self):

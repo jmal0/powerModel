@@ -97,11 +97,12 @@ def runTrajectory(fileName):
             power.addTorques()
 
         statusLogger.tick()
-        usage += power.calcBatteryUsage(TIMESTEP*N, q)
+        usage += power.calcPowerUsage(TIMESTEP*N, q)
         q.write(str(pose["RSR"]) + "\n")
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
 
+# Continues the simulation without moving the robot
 def stepSimulation(sleepTime):
     try:
         t = float(sleepTime)
@@ -118,7 +119,7 @@ def stepSimulation(sleepTime):
             env.StepSimulation(TIMESTEP)
             power.addTorques()
         statusLogger.tick()
-        usage += power.calcBatteryUsage(TIMESTEP*N, q)
+        usage += power.calcPowerUsage(TIMESTEP*N, q)
         q.write(str(pose["RSR"]) + "\n")
 
     print("\nPower used: %.6fWh" % usage)
@@ -180,7 +181,7 @@ def setPosition(jointName, position):
                 else:
                     break
             else: # So outer loop continues
-                usage += power.calcBatteryUsage(TIMESTEP*N, q)
+                usage += power.calcPowerUsage(TIMESTEP*N, q)
                 statusLogger.tick()
                 continue
             break # So inner loop breaks out of outer loop
