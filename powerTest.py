@@ -7,7 +7,7 @@ import time
 import numpy
 import cmd
 import readline, glob
-COMMANDS = ['runTrajectory', 'getPosition', 'setPosition', 'stepSimulation']
+COMMANDS = ['runTrajectory', 'getPosition', 'setPosition', 'stepSimulation', 'getVelocity', 'setVelocity']
 
 from powerModel import * # Import for power computing and joint properties
 
@@ -29,7 +29,7 @@ class StatusLogger:
         ideal_time = hubo_ach.HUBO_LOOP_PERIOD*self.count
         t=time.time()
         actual_time = t-self.t_last
-        log('Sim time: {:.3f}, Actual time: {:.3f}, RT rate: {:.3f}% T= {:.6f}'.format(ideal_time,actual_time,ideal_time/actual_time*100,TIMESTEP)) #
+        log('Sim time: {:.3f}, Actual time: {:.3f}, RT rate: {:.3f}% T= {:.6f}'.format(ideal_time,actual_time,ideal_time/actual_time*100,TIMESTEP))
         self.t_last=t
         self.count=0
 
@@ -123,11 +123,27 @@ def stepSimulation(sleepTime):
 
     print("\nPower used: %.6fWh" % usage)
 
+def getVelocity(jointName):
+    if(jointName in power.names):
+        print jointName + " vel = " +"%.4f" % power.getMotor(jointName).getInterpolationVelocity()
+    else:
+        print "Invalid joint name"
+
+def setVelocity(jointName, vel):
+    if(jointName in power.names):
+        try:
+            vel = float(vel)
+            power.getMotor(jointName).setInterpolationVelocity(vel)
+        except:
+            print "Argument of setVelocity not understood"
+    else:
+        print "Invalid joint name"
+
 def getPosition(jointName):
     # Check to see if jointName is valid
     if jointName in power.names:
         pose = Pose(robot, ctrl)
-        print(jointName + ": " + "%.4f" % pose[jointName])
+        print(jointName + " pos = " + "%.4f" % pose[jointName])
     else:
         print "Invalid joint name"
 
@@ -143,7 +159,7 @@ def setPosition(jointName, position):
 
         pose = Pose(robot, ctrl)
         jointPos = pose[jointName]
-        step = .3*TIMESTEP # Position step determined by interpolation velocity and simulation timestep
+        step = power.getMotor(jointName).getInterpolationVelocity()*TIMESTEP # Change in osition per timestep
         usage = 0
         count = 0
         N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
@@ -153,21 +169,22 @@ def setPosition(jointName, position):
             step *= -1
         jointPos += step
         # While joint is not near desired position yet
-        while(abs(jointPos - position) >= abs(step)):
-            pose[jointName] = jointPos
-            pose.send()
-            env.StepSimulation(TIMESTEP)
-            power.addTorques()
-
-            if(count < N):
-                count += 1
-            else:
+        while(True):
+            for i in xrange(N):
+                if abs(jointPos - position) >= abs(step):
+                    pose[jointName] = jointPos
+                    pose.send()
+                    env.StepSimulation(TIMESTEP)
+                    power.addTorques()
+                    jointPos += step
+                else:
+                    break
+            else: # So outer loop continues
                 usage += power.calcBatteryUsage(TIMESTEP*N, q)
-                count = 0
                 statusLogger.tick()
+                continue
+            break # So inner loop breaks out of outer loop
         
-            jointPos += step
-
         # Joint is near desired position, set position to desired position
         pose[jointName] = position
         env.StepSimulation(TIMESTEP)
@@ -211,7 +228,7 @@ if __name__ == '__main__':
     power = PowerModel(robot, 5)
 
     print "\nMaestro OpenHubo script for modelling power usage of trajectories"
-    print "\tCommands: runTrajectory setPosition getPosition stepSimulation\n"
+    print "\tCommands: runTrajectory stepSimulation getPosition setPosition getVelocity setVelocity\n"
 
     ##
     q = open('trajectories/armTorque.txt', 'w')
@@ -255,7 +272,19 @@ if __name__ == '__main__':
                 if(len(words) == 3):
                     setPosition(words[1], words[2])
                 else:
-                    print "Moves joint to specified position\nUsage: setPosition JOINTNAME VALUE"
+                    print "Moves joint to specified position\nUsage: setPosition JOINTNAME POSITION"
+
+            if(words[0] == "getVelocity"):
+                if(len(words) == 2):
+                    getVelocity(words[1])
+                else:
+                    print "Returns interpolation velocity of a joint\nUsage: getVelocity JOINTNAME"
+
+            if(words[0] == "setVelocity"):
+                if(len(words) == 3):
+                    setVelocity(words[1], words[2])
+                else:
+                    print "Sets interpolation velocity of a joint\nUsage: setVelocity JOINTNAME VELOCITY"
 
         # Exit
         except KeyboardInterrupt:

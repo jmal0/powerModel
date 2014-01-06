@@ -2,13 +2,14 @@
 from numpy import dot
 
 class MotorJoint:
-	def __init__(self, robot, motorConstant, gearRatio, resistance, jointName):
+	def __init__(self, robot, motorConstant, gearRatio, resistance, jointName, vel = .3):
 		self.physics = robot.GetEnv().GetPhysicsEngine()
 		self.name = jointName
 		self.joint = robot.GetJoint(jointName)
 		self.G = gearRatio
 		self.K = motorConstant
 		self.R = resistance
+		self.interpolationVel = vel
 
 	def getName(self):
 		return self.name
@@ -25,3 +26,10 @@ class MotorJoint:
 
 	def getVoltage(self, t):
 		return abs(self.getVelocity())*self.K + t*self.R
+
+	def setInterpolationVelocity(self, v):
+		if v > 0:
+			self.interpolationVel = v
+
+	def getInterpolationVelocity(self):
+		return self.interpolationVel

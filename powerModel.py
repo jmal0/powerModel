@@ -49,3 +49,9 @@ class PowerModel:
     def addTorques(self):
         for motor in self.motors:
             self.totals[motor] += motor.getTorque()
+
+    def getMotor(self, jointName):
+        for motor in self.motors:
+            if(motor.name == jointName):
+                return motor
+        return None
