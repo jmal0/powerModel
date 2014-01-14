@@ -1,7 +1,5 @@
 Motor Name                                        Gear Ratio                        Motor Torque Constant                No Load Current               Mutable              Alternate Name            Resistance
 TSY                                               250                               .0276                                .356                          True                 WST                       .386
-NK1                                               100                               .0117                                .00759                        True                 NK1                       59.3
-NK2                                               100                               .0117                                .00759                        True                 NK2                       59.3
 LSP                                               145                               .0276                                .356                          True                 LSP                       .386
 LSR                                               100                               .0276                                .356                          True                 LSR                       .386
 LSY                                               100                               .0276                                .356                          True                 LSY                       .386
