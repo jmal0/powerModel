@@ -98,7 +98,7 @@ def runTrajectory(fileName):
 
         statusLogger.tick()
         usage += power.calcPowerUsage(TIMESTEP*N, q)
-        q.write(str(pose["RSR"]) + "\n")
+        q.write(str(pose["RSP"]) + "\n")
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
 
@@ -120,7 +120,7 @@ def stepSimulation(sleepTime):
             power.addTorques()
         statusLogger.tick()
         usage += power.calcPowerUsage(TIMESTEP*N, q)
-        q.write(str(pose["RSR"]) + "\n")
+        q.write(str(pose["RSP"]) + "\n")
 
     print("\nPower used: %.6fWh" % usage)
 
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     # Initialize power model, motors
     power = PowerModel(robot, 5)
 
-    print "\nMaestro OpenHubo script for modelling power usage of trajectories"
+    print "\nMaestro OpenHubo script for modelling power usage"
     print "\tCommands: runTrajectory stepSimulation getPosition setPosition getVelocity setVelocity\n"
 
     ##

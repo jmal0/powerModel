@@ -16,7 +16,7 @@ class PowerModel:
         for line in lines:
             vals = line.split()
             if(vals[4] == "True"):
-                motor = MotorJoint(robot, float(vals[2]), float(vals[1]), float(vals[6]), vals[0])
+                motor = MotorJoint(robot, vals[0], float(vals[2]), float(vals[1]), float(vals[6]), float(vals[3]))
                 self.names.append(vals[0])
                 self.motors.append(motor)
                 self.totals[motor] = 0.0
@@ -27,9 +27,11 @@ class PowerModel:
         for motor in self.motors:
             torque = abs(self.totals[motor]/self.num)
             current = motor.getCurrent(torque)
-            voltage = motor.getVoltage(torque)
-            if(motor.getName() == "RSR"):
-                q.write(str(torque) + " ")
+            voltage = motor.getVoltage(current)
+            if(motor.getName() == "RSP"):
+                i = voltage*current/48
+                print i
+                q.write(str(i) + " ")
             self.totals[motor] = 0.0
             usage += voltage*current*step/3600.0
         return usage + .0148634*step # Add in battery drain by idle current draw
