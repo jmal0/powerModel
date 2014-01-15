@@ -6,20 +6,22 @@ from motorJoint import *
 class PowerModel:
     def __init__(self, robot, num):
         self.motors = [] # List of motors
-        self.totals = dict() # Adds each motor's torque readings; Average is taken and written to file
-        self.num = 5 # Number of timesteps before writing to file
-        self.names = []
+        self.num = 5 # Number of timesteps to add torque before calculating power 
+        self.totals = dict() # Adds each motor's torque readings; Average is taken and used to calculate power
+        self.mutableNames = [] # List of joints that can be set
 
         f = open('jointPower.txt','r')
         lines = f.readlines();
         del(lines[0])
         for line in lines:
             vals = line.split()
-            if(vals[4] == "True"):
-                motor = MotorJoint(robot, vals[0], float(vals[2]), float(vals[1]), float(vals[6]), float(vals[3]))
-                self.names.append(vals[0])
-                self.motors.append(motor)
-                self.totals[motor] = 0.0
+
+            motor = MotorJoint(robot, vals[0], vals[1], float(vals[3]), float(vals[4]), float(vals[5]), float(vals[6]))
+            self.motors.append(motor)
+            self.totals[motor] = 0.0
+
+            if(vals[2] == "True"):
+                self.mutableNames.append(vals[0])
         f.close()
 
     def calcPowerUsage(self, step, q):
@@ -28,7 +30,7 @@ class PowerModel:
             torque = abs(self.totals[motor]/self.num)
             current = motor.getCurrent(torque)
             voltage = motor.getVoltage(current)
-            if(motor.getName() == "RSP"):
+            if(motor.maestroName == "RSP"):
                 i = voltage*current/48
                 print i
                 q.write(str(i) + " ")
@@ -41,8 +43,17 @@ class PowerModel:
         for motor in self.motors:
             self.totals[motor] += motor.getTorque()
 
+    # Get motor name corresponding to valid maestro name
     def getMotor(self, jointName):
         for motor in self.motors:
-            if(motor.name == jointName):
+            if(motor.openHuboName == jointName):
                 return motor
+        return None
+
+    # Get openHubo name corresponding to a valid maestro name
+    def getName(self, jointName):
+        for motor in self.motors:
+            if motor.maestroName == jointName:
+                if motor.openHuboName in self.mutableNames:
+                    return motor.openHuboName
         return None

@@ -61,8 +61,10 @@ def runTrajectory(fileName):
 
     # Check if all joints are valid
     for jointName in trajJointNames:
-        if not(jointName in power.names):
-            print 'Warning: Joint %s not recognized or cannot be set' % jointName
+        fileJointName = jointName
+        jointName = power.getName(jointName)
+        if jointName is None:
+            print 'Warning: Joint %s not recognized or cannot be set' % fileJointName
         jointNames.append(jointName)
         positions[jointName] = []
 
@@ -90,7 +92,7 @@ def runTrajectory(fileName):
         # Approximate positions to send in between trajectory values
         for j in xrange(1, N+1):
             for jointName in jointNames:
-                if(jointName in power.names):
+                if jointName is not None:
                     pose[jointName] = float(j)/N*(positions[jointName][i]-posei[jointName]) + posei[jointName]
             pose.send()
             env.StepSimulation(TIMESTEP)
@@ -125,13 +127,15 @@ def stepSimulation(sleepTime):
     print("\nPower used: %.6fWh" % usage)
 
 def getVelocity(jointName):
-    if(jointName in power.names):
-        print jointName + " vel = " +"%.4f" % power.getMotor(jointName).getInterpolationVelocity()
+    jointName = power.getName(jointName)
+    if jointName is not None:
+        print jointName + " vel = " +"%.4f" % power.getMotor(jointName).interpolationVel
     else:
         print "Invalid joint name"
 
 def setVelocity(jointName, vel):
-    if(jointName in power.names):
+    jointName = power.getName(jointName)
+    if jointName is not None:
         try:
             vel = float(vel)
             power.getMotor(jointName).setInterpolationVelocity(vel)
@@ -142,7 +146,8 @@ def setVelocity(jointName, vel):
 
 def getPosition(jointName):
     # Check to see if jointName is valid
-    if jointName in power.names:
+    jointName = power.getName(jointName)
+    if jointName is not None:
         pose = Pose(robot, ctrl)
         print(jointName + " pos = " + "%.4f" % pose[jointName])
     else:
@@ -150,7 +155,8 @@ def getPosition(jointName):
 
 def setPosition(jointName, position):
     # Check to see if jointName is valid
-    if(jointName in power.names):
+    jointName = power.getName(jointName)
+    if(jointName is not None):
         try:
             # Check to see if position is a decimal number
             position = float(position)
@@ -160,7 +166,7 @@ def setPosition(jointName, position):
 
         pose = Pose(robot, ctrl)
         jointPos = pose[jointName]
-        step = power.getMotor(jointName).getInterpolationVelocity()*TIMESTEP # Change in osition per timestep
+        step = power.getMotor(jointName).interpolationVel*TIMESTEP # Change in osition per timestep
         usage = 0
         count = 0
         N = int(numpy.ceil(hubo_ach.HUBO_LOOP_PERIOD/TIMESTEP))
