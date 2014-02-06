@@ -99,8 +99,8 @@ def runTrajectory(fileName):
             power.addTorques()
 
         statusLogger.tick()
-        usage += power.calcPowerUsage(TIMESTEP*N, q)
-        q.write(str(pose["RSP"]) + "\n")
+        usage += power.calcPowerUsage(TIMESTEP*N)
+        q.write(" " + str(pose["RSR"]) + "\n")
 
     print("\nTrajectory completed\nPower used: %.6fWh" % usage)
 
@@ -121,7 +121,7 @@ def stepSimulation(sleepTime):
             env.StepSimulation(TIMESTEP)
             power.addTorques()
         statusLogger.tick()
-        usage += power.calcPowerUsage(TIMESTEP*N, q)
+        usage += power.calcPowerUsage(TIMESTEP*N)
         q.write(str(pose["RSP"]) + "\n")
 
     print("\nPower used: %.6fWh" % usage)
@@ -187,7 +187,7 @@ def setPosition(jointName, position):
                 else:
                     break
             else: # So outer loop continues
-                usage += power.calcPowerUsage(TIMESTEP*N, q)
+                usage += power.calcPowerUsage(TIMESTEP*N)
                 statusLogger.tick()
                 continue
             break # So inner loop breaks out of outer loop
@@ -223,6 +223,7 @@ if __name__ == '__main__':
     time.sleep(.25)
     options.physics = True
     options.stop = True
+    options.ghost = True
     
     # Start OpenHubo
     [robot, ctrl, ind, ghost, recorder] = load_scene(env, options.robotfile, options.scenefile, options.stop, options.physics, options.ghost)
@@ -232,14 +233,13 @@ if __name__ == '__main__':
     statusLogger = StatusLogger(100, time.time())
     
     # Initialize power model, motors
-    power = PowerModel(robot, 5)
-
-    print "\nMaestro OpenHubo script for modelling power usage"
-    print "\tCommands: runTrajectory stepSimulation getPosition setPosition getVelocity setVelocity\n"
-
     ##
     q = open('trajectories/armTorque.txt', 'w')
     ##
+    power = PowerModel(robot, 5, q) ##
+
+    print "\nMaestro OpenHubo script for modelling power usage"
+    print "\tCommands: runTrajectory stepSimulation getPosition setPosition getVelocity setVelocity\n"
 
     # Continuously ask for command
     print "Enter command or press Ctrl+C to exit"
