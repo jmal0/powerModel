@@ -4,12 +4,12 @@ import sys
 from motorJoint import *
 
 class PowerModel:
-    def __init__(self, robot, num, q):
+    def __init__(self, robot, num):
         self.motors = [] # List of motors
         self.num = 5 # Number of timesteps to add torque before calculating power 
         self.totals = dict() # Adds each motor's torque readings; Average is taken and used to calculate power
         self.mutableNames = [] # List of joints that can be set
-        self.q = q
+        self.idleSum = 0.0
 
         f = open('/etc/hubo-ach/jointPower.txt','r')
         lines = f.readlines();
@@ -26,16 +26,15 @@ class PowerModel:
         f.close()
 
     def calcPowerUsage(self, step):
-        usage = 0
+        usage = 0.0
         for motor in self.motors:
             torque = abs(self.totals[motor]/self.num)
-            current = motor.getCurrent(torque)
-            voltage = motor.getVoltage(current)
             self.totals[motor] = 0.0
-            if motor.maestroName == "RSR":
-                self.q.write(str(voltage*current*step/3600.0))
-            usage += voltage*current*step/3600.0
-        return usage + .0148634*step # Add in battery drain by idle current draw
+            power = motor.getPower(step, torque)
+            usage += power
+        idle = .0148634*step
+        self.idleSum += idle
+        return usage + idle # Add in battery drain by idle current draw
 
     # Add each motor's torque output
     def addTorques(self):
@@ -56,3 +55,19 @@ class PowerModel:
                 if motor.openHuboName in self.mutableNames:
                     return motor.openHuboName
         return None
+
+    # Reset joint and idle power usage sums
+    def zero(self):
+        jointUsage = dict()
+        jointCurrent = dict()
+        jointVelocity = dict()
+        jointTorque = dict()
+        for motor in self.motors:
+            jointUsage[motor.maestroName] = motor.power
+            jointCurrent[motor.maestroName] = motor.currentLog
+            jointVelocity[motor.maestroName] = motor.velocityLog
+            jointTorque[motor.maestroName] = motor.torqueLog
+            motor.power = 0.0
+        temp = self.idleSum
+        self.idleSum = 0.0
+        return jointUsage, temp, jointCurrent, jointVelocity, jointTorque

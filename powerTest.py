@@ -40,6 +40,37 @@ class StatusLogger:
 def log(string,level=4):
     raveLog(string,level)
 
+def powerLog(usage):
+        [jointUsage, idle, jointCurrent, jointVelocity, jointTorque] = power.zero()
+        f = open('currentLog.txt','w')
+        g = open('torqueLog.txt', 'w')
+        h = open('velocityLog.txt', 'w')
+        # Write joint headers
+        joints = []
+        for joint in jointCurrent:
+            f.write(joint + " ")
+            g.write(joint + " ")
+            h.write(joint + " ")
+            joints.append(joint)
+
+        f.write("\n")
+        g.write("\n")
+        h.write("\n")
+
+        for i in xrange(len(jointCurrent["RSR"])):
+            for joint in joints:
+                f.write(str(jointCurrent[joint][i]) + " ")
+                g.write(str(jointVelocity[joint][i]) + " ")
+                h.write(str(jointTorque[joint][i]) + " ")
+            f.write("\n")
+            g.write("\n")
+            h.write("\n")
+        print "Power used: %.6fWh" % usage
+        print "Idle Usage: %.6fWh" % idle
+        for joint in jointUsage:
+            print joint + ": %.6fWh" % jointUsage[joint]
+
+
 def runTrajectory(fileName):
     # Check to see if file exists and is a trajectory file
     try:
@@ -100,9 +131,8 @@ def runTrajectory(fileName):
 
         statusLogger.tick()
         usage += power.calcPowerUsage(TIMESTEP*N)
-        q.write(" " + str(pose["RSR"]) + "\n")
 
-    print("\nTrajectory completed\nPower used: %.6fWh" % usage)
+    powerLog(usage)
 
 # Continues the simulation without moving the robot
 def stepSimulation(sleepTime):
@@ -122,9 +152,8 @@ def stepSimulation(sleepTime):
             power.addTorques()
         statusLogger.tick()
         usage += power.calcPowerUsage(TIMESTEP*N)
-        q.write(str(pose["RSP"]) + "\n")
 
-    print("\nPower used: %.6fWh" % usage)
+    powerLog(usage)
 
 def getVelocity(jointName):
     jointName = power.getName(jointName)
@@ -196,7 +225,7 @@ def setPosition(jointName, position):
         pose[jointName] = position
         env.StepSimulation(TIMESTEP)
 
-        print("Power used: %.6fWh" % usage)
+        powerLog(usage)
 
     else:
         print "Invalid joint name"
@@ -233,10 +262,7 @@ if __name__ == '__main__':
     statusLogger = StatusLogger(100, time.time())
     
     # Initialize power model, motors
-    ##
-    q = open('trajectories/armTorque.txt', 'w')
-    ##
-    power = PowerModel(robot, 5, q) ##
+    power = PowerModel(robot, 5) 
 
     print "\nMaestro OpenHubo script for modelling power usage"
     print "\tCommands: runTrajectory stepSimulation getPosition setPosition getVelocity setVelocity\n"

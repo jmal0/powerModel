@@ -12,6 +12,10 @@ class MotorJoint:
 		self.R = resistance
 		self.nlc = noLoadCurrent
 		self.interpolationVel = vel
+		self.power = 0.0
+		self.currentLog = []
+		self.torqueLog = []
+		self.velocityLog = []
 
 	def getTorque(self):
 		[force, torque] = self.physics.GetJointForceTorque(self.joint)
@@ -19,9 +23,12 @@ class MotorJoint:
 		return torque/self.G
 
 	def getVelocity(self):
-		return self.joint.GetVelocities()[0]*self.G
+		v = self.joint.GetVelocities()[0]*self.G
+		self.velocityLog.append(v)
+		return v
 
 	def getCurrent(self, t):
+		self.torqueLog.append(t)
 		return sqrt(t[0]**2+t[1]**2+t[2]**2)/self.Kt
 
 	def getVoltage(self, i):
@@ -30,3 +37,10 @@ class MotorJoint:
 	def setInterpolationVelocity(self, v):
 		if v > 0:
 			self.interpolationVel = v
+
+	def getPower(self, step, t):
+		i = self.getCurrent(t)
+		p = i*self.getVoltage(i)*step/3600.0
+		self.power += p
+		self.currentLog.append(p/54.0)
+		return p
