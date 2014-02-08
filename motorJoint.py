@@ -16,6 +16,7 @@ class MotorJoint:
 		self.currentLog = []
 		self.torqueLog = []
 		self.velocityLog = []
+		self.positionLog = []
 
 	def getTorque(self):
 		[force, torque] = self.physics.GetJointForceTorque(self.joint)
@@ -44,4 +45,5 @@ class MotorJoint:
 		p = i*self.getVoltage(i)*step/3600.0
 		self.power += p
 		self.currentLog.append(p/54.0)
+		self.positionLog.append(self.joint.GetValue(0))
 		return p

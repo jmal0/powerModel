@@ -62,12 +62,14 @@ class PowerModel:
         jointCurrent = dict()
         jointVelocity = dict()
         jointTorque = dict()
+        jointPosition = dict()
         for motor in self.motors:
             jointUsage[motor.maestroName] = motor.power
             jointCurrent[motor.maestroName] = motor.currentLog
             jointVelocity[motor.maestroName] = motor.velocityLog
             jointTorque[motor.maestroName] = motor.torqueLog
+            jointPosition[motor.maestroName] = motor.positionLog
             motor.power = 0.0
         temp = self.idleSum
         self.idleSum = 0.0
-        return jointUsage, temp, jointCurrent, jointVelocity, jointTorque
+        return jointUsage, temp, jointCurrent, jointVelocity, jointTorque, jointPosition

@@ -41,30 +41,36 @@ def log(string,level=4):
     raveLog(string,level)
 
 def powerLog(usage):
-        [jointUsage, idle, jointCurrent, jointVelocity, jointTorque] = power.zero()
-        f = open('currentLog.txt','w')
+        [jointUsage, idle, jointCurrent, jointVelocity, jointTorque, jointPosition] = power.zero()
+        f = open('currentLog.txt', 'w')
         g = open('torqueLog.txt', 'w')
         h = open('velocityLog.txt', 'w')
+        z = open('positionLog.txt', 'w')
         # Write joint headers
         joints = []
         for joint in jointCurrent:
             f.write(joint + " ")
             g.write(joint + " ")
             h.write(joint + " ")
+            z.write(joint + " ")
             joints.append(joint)
 
         f.write("\n")
         g.write("\n")
         h.write("\n")
+        z.write("\n")
 
         for i in xrange(len(jointCurrent["RSR"])):
             for joint in joints:
                 f.write(str(jointCurrent[joint][i]) + " ")
                 g.write(str(jointTorque[joint][i]) + " ")
                 h.write(str(jointVelocity[joint][i]) + " ")
+                z.write(str(jointPosition[joint][i]) + " ")
             f.write("\n")
             g.write("\n")
             h.write("\n")
+            z.write("\n")
+
         print "Power used: %.6fWh" % usage
         print "Idle Usage: %.6fWh" % idle
         for joint in jointUsage:
