@@ -60,8 +60,8 @@ def powerLog(usage):
         for i in xrange(len(jointCurrent["RSR"])):
             for joint in joints:
                 f.write(str(jointCurrent[joint][i]) + " ")
-                g.write(str(jointVelocity[joint][i]) + " ")
-                h.write(str(jointTorque[joint][i]) + " ")
+                g.write(str(jointTorque[joint][i]) + " ")
+                h.write(str(jointVelocity[joint][i]) + " ")
             f.write("\n")
             g.write("\n")
             h.write("\n")

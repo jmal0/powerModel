@@ -28,8 +28,9 @@ class MotorJoint:
 		return v
 
 	def getCurrent(self, t):
-		self.torqueLog.append(t)
-		return sqrt(t[0]**2+t[1]**2+t[2]**2)/self.Kt
+		t = sqrt(t[0]**2+t[1]**2+t[2]**2)
+		self.torqueLog.append(abs(t)
+		return t/self.Kt
 
 	def getVoltage(self, i):
 		return abs(self.getVelocity())*self.Kt + (i+self.nlc)*self.R
