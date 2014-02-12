@@ -7,11 +7,19 @@ class MotorJoint:
 		self.openHuboName = ohName
 		self.maestroName = mName
 		self.joint = robot.GetJoint(self.openHuboName)
+
+		self.interpolation = True
+		self.currentPos = 0
+		self.goalPos = 0
+
+		# Motor parameters
 		self.G = gearRatio
 		self.Kt = torqueConstant
 		self.R = resistance
 		self.nlc = noLoadCurrent
 		self.interpolationVel = vel
+
+		# Logs		
 		self.power = 0.0
 		self.currentLog = []
 		self.torqueLog = []
@@ -47,3 +55,15 @@ class MotorJoint:
 		self.currentLog.append(p/54.0)
 		self.positionLog.append(self.joint.GetValue(0))
 		return p
+
+	def nextPos(self, step):
+		if interpolation:
+			posStep = step*self.interpolationVel
+			if(abs(self.goalPos - self.currentPos) <posStep):
+				return goalPos
+			elif self.goalPos < self.currentPos:
+				return self.currentPos - posStep
+			else
+				return self.currentPos + posStep
+		else:
+			return goalPos

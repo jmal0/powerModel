@@ -253,13 +253,14 @@ if __name__ == '__main__':
     readline.set_completer(complete)
 
     # Setup simulation options
-    [env, options] = setup('qtcoin', True)
+    [env, options] = setup(None, True)
     env.SetDebugLevel(4)
     time.sleep(.25)
     options.physics = True
     options.stop = True
     options.ghost = True
-    
+    #options.robotfile = 'rlhuboplus.fingerless.robot.xml'
+      
     # Start OpenHubo
     [robot, ctrl, ind, ghost, recorder] = load_scene(env, options.robotfile, options.scenefile, options.stop, options.physics, options.ghost)
     env.StopSimulation()
