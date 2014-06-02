@@ -19,7 +19,7 @@ class PowerModel:
 
             motor = MotorJoint(robot, vals[0], vals[1], float(vals[3]), float(vals[4]), float(vals[5]), float(vals[6]))
             self.motors.append(motor)
-            self.totals[motor] = 0.0
+            self.totals[motor] = [0.0, 0.0, 0.0]
 
             if(vals[2] == "True"):
                 self.mutableNames.append(vals[0])
@@ -28,9 +28,9 @@ class PowerModel:
     def calcPowerUsage(self, step):
         usage = 0.0
         for motor in self.motors:
-            torque = abs(self.totals[motor]/self.num)
-            self.totals[motor] = 0.0
-            power = motor.getPower(step, torque)
+            torque = sqrt(self.totals[motor][0]**2+self.totals[motor][1]**2+self.totals[motor][2]**2)/self.num
+            self.totals[motor] = [0.0, 0.0, 0.0]
+            power = motor.getPower(step, torque/motor.G)
             usage += power
         idle = .0148634*step
         self.idleSum += idle

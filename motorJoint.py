@@ -21,7 +21,7 @@ class MotorJoint:
 	def getTorque(self):
 		[force, torque] = self.physics.GetJointForceTorque(self.joint)
 		#return dot(torque, self.joint.GetAxis())/self.G
-		return torque/self.G
+		return torque # Divided by gear ratio in powermodel.py
 
 	def getVelocity(self):
 		v = self.joint.GetVelocities()[0]*self.G
@@ -29,8 +29,8 @@ class MotorJoint:
 		return v
 
 	def getCurrent(self, t):
-		t = sqrt(t[0]**2+t[1]**2+t[2]**2)
-		self.torqueLog.append(abs(t))
+		#t = sqrt(t[0]**2+t[1]**2+t[2]**2)
+		self.torqueLog.append(t)
 		return t/self.Kt
 
 	def getVoltage(self, i):
@@ -44,6 +44,6 @@ class MotorJoint:
 		i = self.getCurrent(t)
 		p = i*self.getVoltage(i)*step/3600.0
 		self.power += p
-		self.currentLog.append(p/54.0)
+		self.currentLog.append(p/54.0) # What is this shit i don't remember
 		self.positionLog.append(self.joint.GetValue(0))
 		return p
